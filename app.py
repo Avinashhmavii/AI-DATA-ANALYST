@@ -9,8 +9,13 @@ from io import StringIO
 import contextlib
 import base64
 import io
+import logging
 
 app = Flask(__name__)
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Initialize Groq client - replace with your API key
 client = Groq(api_key="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")
@@ -99,6 +104,7 @@ def index():
         query = request.form.get('query')
 
         if not file or not model or not query:
+            logger.error("Missing required fields")
             return jsonify({'error': 'Missing required fields'}), 400
 
         try:
@@ -110,6 +116,7 @@ def index():
             code = re.search(r'```python(.*?)```', code_response, re.DOTALL)
             
             if not code:
+                logger.error("No valid code found in response")
                 return jsonify({'error': 'No valid code found in response'}), 400
             
             clean_code = code.group(1).strip()
@@ -117,6 +124,7 @@ def index():
             
             output, figures, env = safe_execute_code(clean_code, df)
             
+            logger.info("Analysis completed successfully")
             return jsonify({
                 'preview': preview,
                 'dtypes': dtypes,
@@ -125,9 +133,11 @@ def index():
                 'figures': figures
             })
         except Exception as e:
+            logger.error(f"Analysis failed: {str(e)}")
             return jsonify({'error': str(e)}), 500
 
-    return render_template('index.html', models=MODELS.keys())
+    # Convert MODELS.keys() to a list explicitly
+    return render_template('index.html', models=list(MODELS.keys()))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
